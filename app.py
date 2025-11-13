@@ -1,3 +1,3 @@
 import streamlit as st
 
-sy.title("primeiro app")
+st.title("primeiro app")
