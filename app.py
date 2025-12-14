@@ -102,3 +102,46 @@ if not regiao_para_boxplot.empty:
 
 else:
     st.warning("Não há dados disponíveis para a região selecionada.")
+
+
+#histogram
+# 3. Seletor de Estado
+st.title("Análise de Frete por Estado")
+
+# Obtém lista única de estados ordenada
+lista_estados = sorted(teste3_copy['customer_state'].unique())
+estado_selecionado = st.selectbox("Selecione o Estado para visualizar o histograma:", lista_estados)
+
+# 4. Filtragem dos Dados
+# Filtra o DataFrame apenas para o estado escolhido
+dados_estado = teste3_copy[teste3_copy['customer_state'] == estado_selecionado]
+
+# Identifica a região do estado selecionado (para usar no título)
+nome_da_regiao = "Desconhecida"
+for regiao, estados in regioes_map.items():
+    if estado_selecionado in estados:
+        nome_da_regiao = regiao
+        break
+
+# 5. Criação do Gráfico
+if not dados_estado.empty:
+    # Cria a figura e o eixo explicitamente para o Streamlit
+    fig, ax = plt.subplots(figsize=(12, 6))
+    
+    # Gera o histograma usando os dados filtrados
+    sns.histplot(dados_estado['freight_value'], bins=50, kde=True, color='salmon', ax=ax)
+    
+    # Título dinâmico
+    ax.set_title(f'Distribuição do Valor do Frete - Estado {estado_selecionado} (Região {nome_da_regiao})')
+    ax.set_xlabel('Valor do Frete')
+    ax.set_ylabel('Frequência')
+    ax.grid(True, linestyle='--', alpha=0.7)
+    
+    # Exibe no Streamlit
+    st.pyplot(fig)
+    
+    # (Opcional) Mostra estatísticas básicas abaixo do gráfico
+    st.write(f"**Estatísticas de Frete para {estado_selecionado}:**")
+    st.write(dados_estado['freight_value'].describe())
+else:
+    st.warning("Não há dados de frete para o estado selecionado.")
