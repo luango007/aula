@@ -72,7 +72,7 @@ regiao_para_boxplot = teste3_copy[teste3_copy['region'] == regiao_selecionada]
 dados_estado = teste3_copy[teste3_copy['customer_state'] == estado_selecionado]
 nome_completo_estado = regiosemsigla.get(estado_selecionado, estado_selecionado)
 
-1. Garante que a variável 'regiao' existe (caso você esteja usando 'região' com til)
+#1. Garante que a variável 'regiao' existe (caso você esteja usando 'região' com til)
 if 'região' in locals() and 'regiao' not in locals():
     regiao = região
 
