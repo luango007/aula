@@ -73,12 +73,39 @@ estado_selecionado = st.sidebar.selectbox("Selecione o Estado:", estados_disponi
 dados_estado = dados_regiao[dados_regiao['customer_state'] == estado_selecionado]
 nome_completo_estado = regiosemsigla.get(estado_selecionado, estado_selecionado)
 
-# --- 6. VISUALIZAÇÕES GERAIS (REGIÃO) ---
+# --- 6. INDICADORES DO ESTADO (O QUE VOCÊ PEDIU NO TOPO) ---
+st.title(f"Dashboard: {nome_completo_estado} ({estado_selecionado})")
 
-st.title(f"Análise Regional: {regiao_selecionada}")
+if not dados_estado.empty:
+    # Cálculo das Métricas
+    frete_medio = dados_estado['freight_value'].mean()
+    preco_medio = dados_estado['price'].mean()
+    parcelas_media = dados_estado['payment_installments'].mean()
+    
+    # Moda (forma de pagamento mais comum)
+    pagamento_top_series = dados_estado['payment_type_portugues'].mode()
+    pagamento_top = pagamento_top_series[0] if not pagamento_top_series.empty else "N/A"
 
-# 6.1 Gráfico de Barras - Tipos de Pagamento
-st.subheader("1. Tipos de Pagamento por Estado")
+    # Exibição no Topo
+    st.markdown("### Resumo do Estado")
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+    kpi1.metric("Frete Médio", f"R$ {frete_medio:.2f}")
+    kpi2.metric("Pagamento Principal", f"{pagamento_top}")
+    kpi3.metric("Preço Médio", f"R$ {preco_medio:.2f}")
+    kpi4.metric("Média de Parcelas", f"{parcelas_media:.1f}x")
+    
+    st.divider()
+
+else:
+    st.warning(f"Sem dados disponíveis para {nome_completo_estado}.")
+
+
+# --- 7. ANÁLISE REGIONAL (GRÁFICOS) ---
+st.subheader(f"Análise Comparativa: Região {regiao_selecionada}")
+
+# 7.1 Gráfico de Barras - Tipos de Pagamento
+st.markdown("**1. Tipos de Pagamento por Estado**")
 pagamento_distribuicao = dados_regiao.groupby(['customer_state_full', 'payment_type_portugues']).size().reset_index(name='count')
 
 fig1, ax1 = plt.subplots(figsize=(12, 6))
@@ -95,8 +122,8 @@ st.pyplot(fig1)
 col1, col2 = st.columns(2)
 
 with col1:
-    # 6.2 Violin Plot - Preço
-    st.subheader("2. Distribuição de Preços")
+    # 7.2 Violin Plot - Preço
+    st.markdown("**2. Distribuição de Preços**")
     fig2, ax2 = plt.subplots(figsize=(10, 6))
     sns.violinplot(
         x='customer_state_full', y='price', data=dados_regiao, 
@@ -108,8 +135,8 @@ with col1:
     st.pyplot(fig2)
 
 with col2:
-    # 6.3 Box Plot - Frete
-    st.subheader("3. Distribuição de Fretes")
+    # 7.3 Box Plot - Frete
+    st.markdown("**3. Distribuição de Fretes**")
     fig3, ax3 = plt.subplots(figsize=(10, 6))
     sns.boxplot(
         x='customer_state_full', y='freight_value', data=dados_regiao, 
@@ -120,8 +147,8 @@ with col2:
     ax3.set_ylabel('Valor do Frete')
     st.pyplot(fig3)
 
-# 6.4 Histograma - Parcelas (Região)
-st.subheader("4. Histograma de Parcelas (Comparativo Regional)")
+# 7.4 Histograma - Parcelas (Região)
+st.markdown("**4. Histograma de Parcelas (Comparativo Regional)**")
 fig5, ax5 = plt.subplots(figsize=(12, 6))
 max_parcelas_reg = int(dados_regiao['payment_installments'].max())
 sns.histplot(
@@ -134,31 +161,11 @@ ax5.set_xlabel('Número de Parcelas')
 ax5.set_xticks(range(1, max_parcelas_reg + 1))
 st.pyplot(fig5)
 
-# --- 7. ANÁLISE ESPECÍFICA DO ESTADO (COM KPIs) ---
-st.divider()
-st.header(f"Foco no Estado: {nome_completo_estado} ({estado_selecionado})")
-
+# --- 8. GRÁFICO ESPECÍFICO DO ESTADO ---
 if not dados_estado.empty:
-    # --- CÁLCULO DAS MÉTRICAS ---
-    frete_medio = dados_estado['freight_value'].mean()
-    preco_medio = dados_estado['price'].mean()
-    parcelas_media = dados_estado['payment_installments'].mean()
+    st.divider()
+    st.subheader(f"Detalhe de Parcelamento: {nome_completo_estado}")
     
-    # Moda (forma de pagamento mais comum)
-    # .mode() retorna uma série, pegamos o primeiro item [0]
-    pagamento_top = dados_estado['payment_type_portugues'].mode()
-    pagamento_top = pagamento_top[0] if not pagamento_top.empty else "N/A"
-
-    # --- EXIBIÇÃO DAS MÉTRICAS (KPIs) ---
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
-    kpi1.metric("Frete Médio", f"R$ {frete_medio:.2f}")
-    kpi2.metric("Pagamento Principal", f"{pagamento_top}")
-    kpi3.metric("Preço Médio", f"R$ {preco_medio:.2f}")
-    kpi4.metric("Média de Parcelas", f"{parcelas_media:.1f}x")
-
-    # --- HISTOGRAMA DO ESTADO ---
-    st.subheader(f"Parcelamento em {nome_completo_estado}")
     fig6, ax6 = plt.subplots(figsize=(12, 6))
     max_parcelas_est = int(dados_estado['payment_installments'].max())
     
@@ -171,6 +178,3 @@ if not dados_estado.empty:
     ax6.set_ylabel('Frequência')
     ax6.set_xticks(range(1, max_parcelas_est + 1))
     st.pyplot(fig6)
-
-else:
-    st.warning(f"Sem dados disponíveis para {nome_completo_estado}.")
