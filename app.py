@@ -22,7 +22,6 @@ if teste3_copy is None:
     st.stop()
 
 # --- 3. DEFINIÇÕES E MAPEAMENTOS ---
-# Definição das Regiões
 regioes_dict = {
     'Nordeste': ['MA', 'PI', 'CE', 'RN', 'PB', 'PE', 'AL', 'SE', 'BA'],
     'Sudeste': ['SP', 'RJ', 'MG', 'ES'],
@@ -52,7 +51,6 @@ traducao_pagamento = {
 }
 
 # --- 4. PREPARAÇÃO DO DATAFRAME ---
-# Cria as colunas necessárias
 teste3_copy['region_name'] = teste3_copy['customer_state'].map(estado_para_regiao)
 teste3_copy['customer_state_full'] = teste3_copy['customer_state'].map(regiosemsigla)
 teste3_copy['payment_type_portugues'] = teste3_copy['payment_type'].map(traducao_pagamento)
@@ -75,7 +73,7 @@ estado_selecionado = st.sidebar.selectbox("Selecione o Estado:", estados_disponi
 dados_estado = dados_regiao[dados_regiao['customer_state'] == estado_selecionado]
 nome_completo_estado = regiosemsigla.get(estado_selecionado, estado_selecionado)
 
-# --- 6. VISUALIZAÇÕES ---
+# --- 6. VISUALIZAÇÕES GERAIS (REGIÃO) ---
 
 st.title(f"Análise Regional: {regiao_selecionada}")
 
@@ -98,7 +96,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     # 6.2 Violin Plot - Preço
-    st.subheader("2. Distribuição de Preços (Violin Plot)")
+    st.subheader("2. Distribuição de Preços")
     fig2, ax2 = plt.subplots(figsize=(10, 6))
     sns.violinplot(
         x='customer_state_full', y='price', data=dados_regiao, 
@@ -111,7 +109,7 @@ with col1:
 
 with col2:
     # 6.3 Box Plot - Frete
-    st.subheader("3. Distribuição de Fretes (Box Plot)")
+    st.subheader("3. Distribuição de Fretes")
     fig3, ax3 = plt.subplots(figsize=(10, 6))
     sns.boxplot(
         x='customer_state_full', y='freight_value', data=dados_regiao, 
@@ -122,23 +120,13 @@ with col2:
     ax3.set_ylabel('Valor do Frete')
     st.pyplot(fig3)
 
-# 6.4 Histograma - Frete da Região
-st.subheader("4. Histograma de Fretes da Região")
-fig4, ax4 = plt.subplots(figsize=(12, 5))
-sns.histplot(dados_regiao['freight_value'], bins=50, kde=True, color='salmon', ax=ax4)
-ax4.set_title(f'Distribuição do Valor do Frete na Região {regiao_selecionada}')
-ax4.set_xlabel('Valor do Frete')
-ax4.set_ylabel('Frequência')
-ax4.grid(True, linestyle='--', alpha=0.7)
-st.pyplot(fig4)
-
-# 6.5 Histograma - Parcelas (Região)
-st.subheader("5. Histograma de Parcelas (Comparativo Regional)")
+# 6.4 Histograma - Parcelas (Região)
+st.subheader("4. Histograma de Parcelas (Comparativo Regional)")
 fig5, ax5 = plt.subplots(figsize=(12, 6))
 max_parcelas_reg = int(dados_regiao['payment_installments'].max())
 sns.histplot(
     data=dados_regiao, x='payment_installments', multiple='stack', 
-    hue='customer_state', # Adicionei hue para diferenciar os estados
+    hue='customer_state', 
     bins=range(1, max_parcelas_reg + 2), palette='viridis', ax=ax5
 )
 ax5.set_title(f'Frequência de Parcelas ({regiao_selecionada})')
@@ -146,14 +134,31 @@ ax5.set_xlabel('Número de Parcelas')
 ax5.set_xticks(range(1, max_parcelas_reg + 1))
 st.pyplot(fig5)
 
-# --- 7. ANÁLISE ESPECÍFICA DO ESTADO ---
+# --- 7. ANÁLISE ESPECÍFICA DO ESTADO (COM KPIs) ---
 st.divider()
 st.header(f"Foco no Estado: {nome_completo_estado} ({estado_selecionado})")
 
-# 6.6 Histograma - Parcelas (Apenas Estado Selecionado)
-st.subheader(f"Parcelamento em {nome_completo_estado}")
-
 if not dados_estado.empty:
+    # --- CÁLCULO DAS MÉTRICAS ---
+    frete_medio = dados_estado['freight_value'].mean()
+    preco_medio = dados_estado['price'].mean()
+    parcelas_media = dados_estado['payment_installments'].mean()
+    
+    # Moda (forma de pagamento mais comum)
+    # .mode() retorna uma série, pegamos o primeiro item [0]
+    pagamento_top = dados_estado['payment_type_portugues'].mode()
+    pagamento_top = pagamento_top[0] if not pagamento_top.empty else "N/A"
+
+    # --- EXIBIÇÃO DAS MÉTRICAS (KPIs) ---
+    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+    kpi1.metric("Frete Médio", f"R$ {frete_medio:.2f}")
+    kpi2.metric("Pagamento Principal", f"{pagamento_top}")
+    kpi3.metric("Preço Médio", f"R$ {preco_medio:.2f}")
+    kpi4.metric("Média de Parcelas", f"{parcelas_media:.1f}x")
+
+    # --- HISTOGRAMA DO ESTADO ---
+    st.subheader(f"Parcelamento em {nome_completo_estado}")
     fig6, ax6 = plt.subplots(figsize=(12, 6))
     max_parcelas_est = int(dados_estado['payment_installments'].max())
     
@@ -166,5 +171,6 @@ if not dados_estado.empty:
     ax6.set_ylabel('Frequência')
     ax6.set_xticks(range(1, max_parcelas_est + 1))
     st.pyplot(fig6)
+
 else:
     st.warning(f"Sem dados disponíveis para {nome_completo_estado}.")
