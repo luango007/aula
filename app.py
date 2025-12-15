@@ -72,6 +72,34 @@ regiao_para_boxplot = teste3_copy[teste3_copy['region'] == regiao_selecionada]
 dados_estado = teste3_copy[teste3_copy['customer_state'] == estado_selecionado]
 nome_completo_estado = regiosemsigla.get(estado_selecionado, estado_selecionado)
 
+1. Garante que a variável 'regiao' existe (caso você esteja usando 'região' com til)
+if 'região' in locals() and 'regiao' not in locals():
+    regiao = região
+
+# 2. Garante que os dicionários de tradução existam
+regiosemsigla = {
+    'AC': 'Acre', 'AL': 'Alagoas', 'AP': 'Amapá', 'AM': 'Amazonas', 'BA': 'Bahia',
+    'CE': 'Ceará', 'DF': 'Distrito Federal', 'ES': 'Espírito Santo', 'GO': 'Goiás',
+    'MA': 'Maranhão', 'MT': 'Mato Grosso', 'MS': 'Mato Grosso do Sul', 'MG': 'Minas Gerais',
+    'PA': 'Pará', 'PB': 'Paraíba', 'PR': 'Paraná', 'PE': 'Pernambuco', 'PI': 'Piauí',
+    'RJ': 'Rio de Janeiro', 'RN': 'Rio Grande do Norte', 'RS': 'Rio Grande do Sul',
+    'RO': 'Rondônia', 'RR': 'Roraima', 'SC': 'Santa Catarina', 'SP': 'São Paulo',
+    'SE': 'Sergipe', 'TO': 'Tocantins'
+}
+
+traducao_pagamento = {
+    'credit_card': 'Cartão de Crédito', 'boleto': 'Boleto', 'voucher': 'Voucher',
+    'debit_card': 'Cartão de Débito', 'not_defined': 'Não Definido'
+}
+
+# 3. Cria as colunas que faltam dentro do DataFrame 'regiao'
+# Usamos .copy() para evitar o erro de "SettingWithCopyWarning"
+regiao = regiao.copy() 
+if 'customer_state_full' not in regiao.columns:
+    regiao['customer_state_full'] = regiao['customer_state'].map(regiosemsigla)
+
+if 'payment_type_portugues' not in regiao.columns:
+    regiao['payment_type_portugues'] = regiao['payment_type'].map(traducao_pagamento)
 # 6. Visualização
 if not regiao_para_boxplot.empty:
     st.subheader(f"Distribuição do Valor de Pagamento - Região {regiao_selecionada}")
