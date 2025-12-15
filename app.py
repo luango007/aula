@@ -4,7 +4,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # --- 1. CONFIGURAÇÃO DA PÁGINA ---
-st.set_page_config(page_title="Dashboard Estadual", layout="wide")
+st.set_page_config(page_title="Dashboard de Vendas", layout="wide")
 
 # --- 2. CARREGAMENTO DOS DADOS ---
 @st.cache_data
@@ -58,108 +58,117 @@ teste3_copy['payment_type_portugues'] = teste3_copy['payment_type'].map(traducao
 # --- 5. BARRA LATERAL (FILTROS) ---
 st.sidebar.header("Filtros")
 
-# Filtro 1: Região (apenas para facilitar encontrar o estado)
+# Filtro 1: Região
 lista_regioes = list(regioes_dict.keys())
 regiao_selecionada = st.sidebar.selectbox("Selecione a Região:", lista_regioes)
 
-# Filtrar lista de estados baseada na região
-estados_da_regiao = [est for est in regioes_dict[regiao_selecionada] if est in teste3_copy['customer_state'].unique()]
-estados_da_regiao = sorted(estados_da_regiao)
+# Filtrar dados da Região
+dados_regiao = teste3_copy[teste3_copy['region_name'] == regiao_selecionada]
 
-# Filtro 2: Estado
-estado_selecionado = st.sidebar.selectbox("Selecione o Estado:", estados_da_regiao)
+# Filtro 2: Estado (Com opção "Nenhum")
+estados_da_regiao = sorted([est for est in regioes_dict[regiao_selecionada] if est in teste3_copy['customer_state'].unique()])
+opcoes_estado = ["Nenhum"] + estados_da_regiao
+estado_selecionado = st.sidebar.selectbox("Selecione o Estado:", opcoes_estado)
 
-# FILTRO PRINCIPAL: Cria o DataFrame apenas com o estado escolhido
-dados_estado = teste3_copy[teste3_copy['customer_state'] == estado_selecionado]
-nome_completo_estado = regiosemsigla.get(estado_selecionado, estado_selecionado)
+# --- LÓGICA DE EXIBIÇÃO ---
 
-# --- 6. INDICADORES DO ESTADO (KPIs) ---
-st.title(f"Análise: {nome_completo_estado} ({estado_selecionado})")
-
-if not dados_estado.empty:
-    # Cálculo das Métricas
-    frete_medio = dados_estado['freight_value'].mean()
-    preco_medio = dados_estado['price'].mean()
-    parcelas_media = dados_estado['payment_installments'].mean()
+# SE FOR ESTADO "NENHUM" -> MOSTRAR VISÃO REGIONAL
+if estado_selecionado == "Nenhum":
+    st.title(f"Panorama Regional: {regiao_selecionada}")
     
-    # Moda (forma de pagamento mais comum)
-    pagamento_top_series = dados_estado['payment_type_portugues'].mode()
-    pagamento_top = pagamento_top_series[0] if not pagamento_top_series.empty else "N/A"
-
-    # Exibição no Topo
-    st.markdown("### Indicadores Chave")
+    # KPIs da Região
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-
-    kpi1.metric("Frete Médio", f"R$ {frete_medio:.2f}")
-    kpi2.metric("Pagamento Principal", f"{pagamento_top}")
-    kpi3.metric("Preço Médio", f"R$ {preco_medio:.2f}")
-    kpi4.metric("Média de Parcelas", f"{parcelas_media:.1f}x")
+    kpi1.metric("Frete Médio (Região)", f"R$ {dados_regiao['freight_value'].mean():.2f}")
+    kpi2.metric("Pagamento Principal", f"{dados_regiao['payment_type_portugues'].mode()[0]}")
+    kpi3.metric("Preço Médio", f"R$ {dados_regiao['price'].mean():.2f}")
+    kpi4.metric("Total de Pedidos", f"{len(dados_regiao)}")
     
     st.divider()
+    
+    # GRÁFICOS REGIONAIS (Comparativos)
+    st.subheader(f"Comparativo entre Estados do {regiao_selecionada}")
 
-    # --- 7. GRÁFICOS DO ESTADO ---
+    # 1. Tipos de Pagamento por Estado
+    st.markdown("**1. Distribuição de Pagamentos por Estado**")
+    pagamento_dist = dados_regiao.groupby(['customer_state_full', 'payment_type_portugues']).size().reset_index(name='count')
     
-    # 7.1 Distribuição dos Tipos de Pagamento
-    st.subheader("1. Preferência de Pagamento")
-    
-    # Contagem simples por tipo de pagamento
-    pagamento_contagem = dados_estado['payment_type_portugues'].value_counts().reset_index()
-    pagamento_contagem.columns = ['Tipo de Pagamento', 'Quantidade']
-    
-    fig1, ax1 = plt.subplots(figsize=(10, 5))
-    sns.barplot(
-        x='Quantidade', y='Tipo de Pagamento', 
-        data=pagamento_contagem, palette='viridis', ax=ax1
-    )
-    ax1.set_title(f'Métodos de Pagamento em {estado_selecionado}')
-    ax1.grid(axis='x', linestyle='--', alpha=0.5)
+    fig1, ax1 = plt.subplots(figsize=(12, 6))
+    sns.barplot(x='count', y='customer_state_full', hue='payment_type_portugues', data=pagamento_dist, orient='h', palette='viridis', ax=ax1)
+    ax1.set_xlabel('Quantidade')
+    ax1.set_ylabel('Estado')
     st.pyplot(fig1)
 
     col1, col2 = st.columns(2)
-
     with col1:
-        # 7.2 Distribuição de Preços (Violin Plot)
-        st.subheader("2. Distribuição de Preços")
+        # 2. Preços por Estado
+        st.markdown("**2. Distribuição de Preços**")
         fig2, ax2 = plt.subplots(figsize=(10, 6))
-        
-        # Plot apenas com o eixo Y (preço)
-        sns.violinplot(
-            y='price', data=dados_estado, 
-            palette='coolwarm', ax=ax2
-        )
-        ax2.set_title(f'Variação dos Preços ({estado_selecionado})')
-        ax2.set_ylabel('Preço (R$)')
+        sns.violinplot(x='customer_state_full', y='price', data=dados_regiao, palette='coolwarm', ax=ax2)
+        ax2.set_xlabel('Estado')
+        ax2.set_ylabel('Preço')
         st.pyplot(fig2)
-
-    with col2:
-        # 7.3 Distribuição de Fretes (Box Plot)
-        st.subheader("3. Distribuição de Fretes")
-        fig3, ax3 = plt.subplots(figsize=(10, 6))
         
-        # Plot apenas com o eixo Y (frete)
-        sns.boxplot(
-            y='freight_value', data=dados_estado, 
-            palette='crest', ax=ax3
-        )
-        ax3.set_title(f'Variação do Frete ({estado_selecionado})')
-        ax3.set_ylabel('Valor do Frete (R$)')
+    with col2:
+        # 3. Frete por Estado
+        st.markdown("**3. Distribuição de Frete**")
+        fig3, ax3 = plt.subplots(figsize=(10, 6))
+        sns.boxplot(x='customer_state_full', y='freight_value', data=dados_regiao, palette='crest', ax=ax3)
+        ax3.set_xlabel('Estado')
+        ax3.set_ylabel('Frete')
         st.pyplot(fig3)
 
-    # 7.4 Histograma de Parcelas
-    st.subheader("4. Comportamento de Parcelamento")
-    fig4, ax4 = plt.subplots(figsize=(12, 6))
-    max_parcelas = int(dados_estado['payment_installments'].max())
-    
-    sns.histplot(
-        data=dados_estado, x='payment_installments', 
-        bins=range(1, max_parcelas + 2), color='seagreen', ax=ax4
-    )
-    ax4.set_title(f'Frequência de Parcelas em {nome_completo_estado}')
-    ax4.set_xlabel('Número de Parcelas')
-    ax4.set_ylabel('Quantidade de Pedidos')
-    ax4.set_xticks(range(1, max_parcelas + 1))
-    ax4.grid(axis='y', linestyle='--', alpha=0.5)
-    st.pyplot(fig4)
-
+# SE FOR UM ESTADO ESPECÍFICO -> MOSTRAR VISÃO DO ESTADO
 else:
-    st.warning(f"Sem dados disponíveis para {nome_completo_estado}.")
+    dados_estado = dados_regiao[dados_regiao['customer_state'] == estado_selecionado]
+    nome_completo_estado = regiosemsigla.get(estado_selecionado, estado_selecionado)
+    
+    st.title(f"Análise Detalhada: {nome_completo_estado} ({estado_selecionado})")
+    
+    if not dados_estado.empty:
+        # KPIs do Estado
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("Frete Médio", f"R$ {dados_estado['freight_value'].mean():.2f}")
+        kpi2.metric("Pagamento Principal", f"{dados_estado['payment_type_portugues'].mode()[0]}")
+        kpi3.metric("Preço Médio", f"R$ {dados_estado['price'].mean():.2f}")
+        kpi4.metric("Média Parcelas", f"{dados_estado['payment_installments'].mean():.1f}x")
+        
+        st.divider()
+
+        # GRÁFICOS DO ESTADO
+        col_graf1, col_graf2 = st.columns(2)
+        
+        with col_graf1:
+            st.subheader("1. Formas de Pagamento")
+            pag_contagem = dados_estado['payment_type_portugues'].value_counts().reset_index()
+            pag_contagem.columns = ['Tipo', 'Qtd']
+            
+            fig_st1, ax_st1 = plt.subplots(figsize=(8, 5))
+            sns.barplot(x='Qtd', y='Tipo', data=pag_contagem, palette='viridis', ax=ax_st1)
+            ax_st1.set_title(f'Pagamentos em {estado_selecionado}')
+            st.pyplot(fig_st1)
+            
+        with col_graf2:
+            st.subheader("2. Histograma de Parcelas")
+            max_parc = int(dados_estado['payment_installments'].max())
+            fig_st2, ax_st2 = plt.subplots(figsize=(8, 5))
+            sns.histplot(dados_estado['payment_installments'], bins=range(1, max_parc+2), color='seagreen', ax=ax_st2)
+            ax_st2.set_title(f'Parcelamento em {estado_selecionado}')
+            ax_st2.set_xticks(range(1, max_parc+1))
+            st.pyplot(fig_st2)
+            
+        col_graf3, col_graf4 = st.columns(2)
+        
+        with col_graf3:
+             st.subheader("3. Preços (Violin Plot)")
+             fig_st3, ax_st3 = plt.subplots(figsize=(8, 5))
+             sns.violinplot(y='price', data=dados_estado, palette='coolwarm', ax=ax_st3)
+             st.pyplot(fig_st3)
+             
+        with col_graf4:
+             st.subheader("4. Frete (Box Plot)")
+             fig_st4, ax_st4 = plt.subplots(figsize=(8, 5))
+             sns.boxplot(y='freight_value', data=dados_estado, palette='crest', ax=ax_st4)
+             st.pyplot(fig_st4)
+
+    else:
+        st.warning("Sem dados para este estado.")
