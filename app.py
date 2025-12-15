@@ -145,3 +145,85 @@ if not dados_estado.empty:
     st.write(dados_estado['freight_value'].describe())
 else:
     st.warning("Não há dados de frete para o estado selecionado.")
+
+# GRÁFICO 1: Distribuição de Tipos de Pagamento
+st.subheader(f"1. Tipos de Pagamento por Estado ({nome_da_regiao})")
+
+# Group by logic
+payment_distribution = regiao.groupby(['customer_state_full', 'payment_type_portugues']).size().reset_index(name='count')
+
+fig1, ax1 = plt.subplots(figsize=(12, 8))
+sns.barplot(
+    x='count', 
+    y='customer_state_full', 
+    hue='payment_type_portugues', 
+    data=payment_distribution, 
+    orient='h', 
+    palette='viridis',
+    ax=ax1
+)
+ax1.set_title(f'Distribuição de Tipos de Pagamento - Região {nome_da_regiao}')
+ax1.set_xlabel('Número de Pagamentos')
+ax1.set_ylabel('Estado')
+ax1.legend(title='Tipo de Pagamento')
+st.pyplot(fig1)
+
+# GRÁFICO 2: Boxplot do Frete
+st.subheader(f"2. Distribuição do Valor do Frete ({nome_da_regiao})")
+
+fig2, ax2 = plt.subplots(figsize=(12, 8))
+sns.boxplot(
+    x='customer_state_full',
+    y='freight_value', 
+    data=regiao, 
+    orient='v',
+    palette='crest',
+    ax=ax2
+)
+ax2.set_title(f'Distribuição do Valor do Frete - Região {nome_da_regiao}')
+ax2.set_xlabel('Estado')
+ax2.set_ylabel('Valor do Frete')
+st.pyplot(fig2)
+
+# GRÁFICO 3: Histograma de Parcelas
+st.subheader(f"3. Frequência do Número de Parcelas ({nome_da_regiao})")
+
+fig3, ax3 = plt.subplots(figsize=(12, 8))
+# Nota: Adicionei hue='customer_state' para o 'multiple=stack' fazer sentido visualmente
+sns.histplot(
+    data=regiao, 
+    x='payment_installments', 
+    hue='customer_state', # Adicionado para melhor visualização empilhada
+    multiple='stack', 
+    bins=range(1, int(regiao['payment_installments'].max()) + 2),
+    palette='viridis',
+    ax=ax3
+)
+ax3.set_title(f'Frequência do Número de Parcelas - Região {nome_da_regiao}')
+ax3.set_xlabel('Número de Parcelas')
+ax3.set_ylabel('Frequência')
+# Ajuste dos ticks do eixo X
+ax3.set_xticks(range(1, int(regiao['payment_installments'].max()) + 1))
+st.pyplot(fig3)
+
+# GRÁFICO 4: Média de Frete
+st.subheader(f"4. Média do Valor do Frete por Estado ({nome_da_regiao})")
+
+# Calculate average
+average_freight = regiao.groupby('customer_state_full')['freight_value'].mean().reset_index()
+average_freight = average_freight.sort_values(by='freight_value', ascending=False)
+
+fig4, ax4 = plt.subplots(figsize=(14, 8))
+sns.barplot(
+    x='freight_value', 
+    y='customer_state_full', 
+    data=average_freight, 
+    palette='Greens', 
+    hue='customer_state_full', 
+    legend=False,
+    ax=ax4
+)
+ax4.set_title(f'Valor Médio do Frete - Região {nome_da_regiao}')
+ax4.set_xlabel('Valor Médio do Frete (R$)')
+ax4.set_ylabel('Estado')
+st.pyplot(fig4)
