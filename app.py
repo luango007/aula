@@ -172,3 +172,89 @@ else:
 
     else:
         st.warning("Sem dados para este estado.")
+
+--- 8. ANÁLISE AVANÇADA E DADOS (NOVO BLOCO) ---
+st.divider()
+st.header("Análise Avançada e Dados")
+
+col_adv1, col_adv2 = st.columns(2)
+
+with col_adv1:
+    st.subheader("5. Relação Preço x Frete")
+    st.markdown("Identifique se produtos caros pagam mais frete.")
+    
+    # Gráfico de Dispersão (Scatter Plot)
+    fig_scat, ax_scat = plt.subplots(figsize=(10, 6))
+    
+    # Usamos scatterplot. O 'hue' colore pelo tipo de pagamento para dar mais contexto
+    sns.scatterplot(
+        data=dados_estado if 'dados_estado' in locals() and not dados_estado.empty else dados_regiao,
+        x='price', 
+        y='freight_value', 
+        hue='payment_type_portugues',
+        alpha=0.6, # Transparência para ver sobreposição
+        palette='viridis',
+        ax=ax_scat
+    )
+    
+    ax_scat.set_title("Dispersão: Preço do Produto vs Valor do Frete")
+    ax_scat.set_xlabel("Preço do Produto (R$)")
+    ax_scat.set_ylabel("Valor do Frete (R$)")
+    
+    # Escala logarítmica ajuda se houver preços muito díspares (opcional, pode remover se quiser)
+    ax_scat.set_xscale('log')
+    ax_scat.set_yscale('log')
+    
+    st.pyplot(fig_scat)
+    st.caption("Nota: Eixos em escala logarítmica para melhor visualização.")
+
+with col_adv2:
+    st.subheader("6. Faixas de Preço")
+    st.markdown("Como as vendas se dividem por valor?")
+    
+    # Define os dados a serem usados (Estado ou Região)
+    df_analise = dados_estado if 'dados_estado' in locals() and not dados_estado.empty else dados_regiao
+    
+    # Criar faixas de preço (Buckets)
+    bins = [0, 50, 100, 250, 500, float('inf')]
+    labels = ['Até R$50', 'R$50-100', 'R$100-250', 'R$250-500', 'Acima de R$500']
+    
+    # .copy() para evitar avisos do pandas
+    df_analise = df_analise.copy()
+    df_analise['faixa_preco'] = pd.cut(df_analise['price'], bins=bins, labels=labels)
+    
+    # Contagem
+    faixa_counts = df_analise['faixa_preco'].value_counts().sort_index()
+    
+    fig_bar, ax_bar = plt.subplots(figsize=(10, 6))
+    sns.barplot(x=faixa_counts.index, y=faixa_counts.values, palette='magma', ax=ax_bar)
+    
+    ax_bar.set_title("Quantidade de Vendas por Faixa de Preço")
+    ax_bar.set_ylabel("Quantidade de Pedidos")
+    ax_bar.set_xlabel("Faixa de Preço")
+    
+    # Adicionar rótulos nas barras
+    for i, v in enumerate(faixa_counts.values):
+        ax_bar.text(i, v + (v*0.01), str(v), ha='center', fontweight='bold')
+        
+    st.pyplot(fig_bar)
+
+# --- 9. EXIBIÇÃO DE DADOS BRUTOS ---
+st.divider()
+st.subheader("Base de Dados Filtrada")
+
+# Escolhe qual DF mostrar
+df_final = dados_estado if 'dados_estado' in locals() and not dados_estado.empty else dados_regiao
+
+# Mostra as primeiras linhas interativas
+st.dataframe(df_final.head(100), use_container_width=True)
+
+# Botão de Download CSV
+csv = df_final.to_csv(index=False).encode('utf-8')
+
+st.download_button(
+    label="📥 Baixar Dados Filtrados (CSV)",
+    data=csv,
+    file_name=f"dados_vendas_{estado_selecionado if estado_selecionado != 'Nenhum' else regiao_selecionada}.csv",
+    mime="text/csv",
+)
