@@ -173,7 +173,7 @@ else:
     else:
         st.warning("Sem dados para este estado.")
 
---- 8. ANÁLISE AVANÇADA E DADOS (NOVO BLOCO) ---
+#--- 8. ANÁLISE AVANÇADA E DADOS (NOVO BLOCO) ---
 st.divider()
 st.header("Análise Avançada e Dados")
 
